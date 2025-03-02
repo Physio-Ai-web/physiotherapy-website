@@ -1,0 +1,93 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { AiOutlineRobot } from "react-icons/ai";
+import { IoSend } from "react-icons/io5";
+import axios from "axios";
+import "./AIChatbot.css";
+
+const AIChatbot = () => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const quickReplies = [
+    "Back Pain Exercises",
+    "Neck Pain Relief",
+    "Posture Correction Tips",
+    "Knee Injury Recovery",
+    "General Physiotherapy Advice"
+  ];
+
+  const fetchAIResponse = async (userInput) => {
+    try {
+      const response = await axios.post("https://api.openai.com/v1/chat/completions", {
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: "You are an AI physiotherapy assistant. Provide advice based on evidence-based physiotherapy practices. Do not provide medical diagnoses, but suggest exercises, posture corrections, and rehab techniques where applicable." },
+          { role: "user", content: userInput }
+        ],
+        max_tokens: 150,
+      }, {
+        headers: {
+          "Authorization": `Bearer YOUR_OPENAI_API_KEY`,
+          "Content-Type": "application/json"
+        }
+      });
+      return response.data.choices[0].message.content;
+    } catch (error) {
+      return "I'm sorry, but I'm having trouble processing your request. Please try again later.";
+    }
+  };
+
+  const handleSend = async (text = input) => {
+    if (text.trim() !== "") {
+      setMessages([...messages, { text, user: true }]);
+      setInput("");
+      setLoading(true);
+      
+      setTimeout(async () => {
+        const botResponse = await fetchAIResponse(text);
+        setMessages((prev) => [...prev, { text: botResponse, user: false }]);
+        setLoading(false);
+      }, 500);
+    }
+  };
+
+  return (
+    <motion.div 
+      className="chatbot-container" 
+      initial={{ opacity: 0, scale: 0.9 }} 
+      animate={{ opacity: 1, scale: 1 }}
+    >
+      <div className="chatbot-header">
+        <AiOutlineRobot size={24} /> AI Physiotherapy Assistant
+      </div>
+      <div className="chatbot-messages">
+        {messages.map((msg, index) => (
+          <div key={index} className={`chat-message ${msg.user ? "user" : "bot"}`}>
+            {msg.text}
+          </div>
+        ))}
+        {loading && <div className="chat-message bot">Typing...</div>}
+      </div>
+      <div className="quick-replies">
+        {quickReplies.map((reply, index) => (
+          <button key={index} className="quick-reply" onClick={() => handleSend(reply)}>
+            {reply}
+          </button>
+        ))}
+      </div>
+      <div className="chatbot-input">
+        <input 
+          type="text" 
+          placeholder="Ask me about physiotherapy..." 
+          value={input} 
+          onChange={(e) => setInput(e.target.value)} 
+          onKeyPress={(e) => e.key === "Enter" && handleSend()}
+        />
+        <button onClick={handleSend} disabled={loading}><IoSend size={20} /></button>
+      </div>
+    </motion.div>
+  );
+};
+
+export default AIChatbot;
